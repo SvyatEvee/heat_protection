@@ -307,22 +307,38 @@ def calc_convect_flow(table_geom: list[list[float]], section: list[list[float]],
     cp_T0 = thermophysical_parameters[6]
     k = thermophysical_parameters[7]
 
+    # определение лямбды
+
     lambda_array = []
     q_array = []
     for i in range(number_section):
 
         if (i <= chbr_sec_count + subsn_sec_count):
-            q = 1/D_otn[i]
+            q = 1/(D_otn[i])**2
             lmbd = get_lambda(q,k, key = "Subsonic")
         else:
-            q = 1 / D_otn[i]
+            q = 1 / (D_otn[i])**2
             lmbd = get_lambda(q,k, key="Supersonic")
 
         lambda_array.append(lmbd)
-        q_array.append(1/D_otn[i])
+        q_array.append(1/D_otn[i]**2)
 
-    a = 1
+    # расчет конвективного теплового потока
 
+    cp_sr = (cp_st_usl + cp_T0) / 2
+    T_st_otn = T_st_usl/T_0g
+
+    S = (2.065 * cp_sr * (T_0g - T_st_usl) * mu_T0**0.15) / ( (R_T0 * T_0g)**0.425 * (1 + T_st_otn)**0.595 * (3 + T_st_otn)**0.15)
+
+    alpha = 1.813 * (2 / (k+1))**(0.85/(k-1)) * ((2*k) / (k+1))**0.425
+    betta = lmbd * ((k-1) / (k+1))**0.5
+
+    Z = ( 1.769 * (1 - betta**2 + betta**2 * (1 - 0.086*(1 - betta**2) / (1 - T_st_otn - 0.1*betta**2))) / (1 - 0.086*(1 - betta**2) / (1 - T_st_otn - 0.1*betta**2)) )**0.54
+
+    A = 0.01352
+    B = 0.4842 * alpha * A * Z**0.075
+    # надо все это говно в цикл закинуть
+    q_convect = B * ((1- betta**2) * epsilon * p_k**0.85 * S) / ()
 
 def heat_protection_main(X_list: list[float], D_list: list[float], n_section: int, gemtr_list: list[float],
                          cooling_path_param: list[float], thermophysical_parameters: list[float]) -> None:

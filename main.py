@@ -31,7 +31,7 @@ if __name__ == "__main__":
     gemtr_list.append(D_list.pop())
     gemtr_list.append(X_list.pop())
     gemtr_list.append(D_list.pop())
-    gemtr_list.append(x_cooling_change)
+    gemtr_list.append(x_cooling_change) # мм
 
 
     # Параметры тракта охлаждения
@@ -61,6 +61,7 @@ if __name__ == "__main__":
     cp_st_usl = 1
     cp_T0 = 1
     k = 1.4
+    p_k = 10
 
     thermophysical_parameters.append(Pr)
     thermophysical_parameters.append(mu_T0)
