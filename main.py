@@ -23,12 +23,16 @@ if __name__ == "__main__":
 
 
     # Параметры сопла
-    gemtr_list = [] # [l_kam, D_kam, X_kr, D_kr]
+    gemtr_list = [] # [l_kam, D_kam, X_kr, D_kr, x_cooling_change]
+
+    x_cooling_change = 700 # точка смены проточного охлаждения на радиационное
 
     gemtr_list.append(X_list.pop())
     gemtr_list.append(D_list.pop())
     gemtr_list.append(X_list.pop())
     gemtr_list.append(D_list.pop())
+    gemtr_list.append(x_cooling_change)
+
 
     # Параметры тракта охлаждения
     cooling_path_param = [] # [inner_wall, outer_wall, delt_r, betta, height]
@@ -56,7 +60,7 @@ if __name__ == "__main__":
     T_0g = 2000
     cp_st_usl = 1
     cp_T0 = 1
-    k = 1.3
+    k = 1.4
 
     thermophysical_parameters.append(Pr)
     thermophysical_parameters.append(mu_T0)

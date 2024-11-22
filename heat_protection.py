@@ -112,7 +112,7 @@ def init_mesh(x_list: list[float], d_list: list[float], n_section: int, gemtr_li
 
     sections_x_list[chbr_sect_count + subsn_sect_count + 1] = sections_x_list[chbr_sect_count + subsn_sect_count] + start_dx   # инициализация сверхзвуковой части
     k = k_supsn
-    for i in range(chbr_sect_count + subsn_sect_count + 2, chbr_sect_count + subsn_sect_count + supsn_sect_count +1):
+    for i in range(chbr_sect_count + subsn_sect_count + 2, number_section +1):
         sections_x_list[i] = sections_x_list[i - 1] + start_dx * k
         k *= k_supsn
 
@@ -247,6 +247,37 @@ def set_cooling_path_table(x_section, d_section, section: list[list[int]], cooli
 
     return table
 
+
+def get_lambda(q: float, k: float, key: str) -> float:
+
+    if (key == "Subsonic"):
+        lmbd  = 0.3
+    elif (key == "Supersonic"):
+        lmbd  = 1.01
+    while (True):
+        if (key == "Subsonic"):
+            f = lmbd * (1 - (k - 1) / (k + 1) * lmbd ** 2) ** (1 / (k - 1)) * ((k + 1) / 2) ** (1 / (k - 1)) - q
+            delta_lamda = 0.01
+            fd = ((lmbd + delta_lamda) * (1 - (k - 1) / (k + 1) * (lmbd + delta_lamda) ** 2) ** (1 / (k - 1)) * (
+                        (k + 1) / 2) ** (1 / (k - 1))) / delta_lamda
+        elif (key == "Supersonic"):
+            f = lmbd * (1 - (k - 1) / (k + 1) * lmbd ** 2) ** (1 / (k - 1)) * ((k + 1) / 2) ** (1 / (k - 1)) - q
+            delta_lamda = 0.01
+            fd = ((lmbd - delta_lamda) * (1 - (k - 1) / (k + 1) * (lmbd - delta_lamda) ** 2) ** (1 / (k - 1)) * (
+                        (k + 1) / 2) ** (1 / (k - 1))) / -delta_lamda
+
+
+        lambda1 = lmbd - f/fd
+
+        if (abs((lambda1 - lmbd) / lambda1) < 0.000001):
+                lambda1
+                break
+        else:
+            lmbd = lambda1
+
+
+    return lambda1
+
 def calc_convect_flow(table_geom: list[list[float]], section: list[list[float]], gemtr_list: list[float],
                       thermophysical_parameters: list[float]) -> list[list[float]]:
 
@@ -254,6 +285,7 @@ def calc_convect_flow(table_geom: list[list[float]], section: list[list[float]],
     d_kam = gemtr_list[1]
     x_kr = gemtr_list[2]
     d_kr = gemtr_list[3]
+    x_cooling_change = gemtr_list[4]
 
     number_section = section[0]
     chbr_sec_count = section[1]
@@ -274,6 +306,22 @@ def calc_convect_flow(table_geom: list[list[float]], section: list[list[float]],
     cp_st_usl = thermophysical_parameters[5]
     cp_T0 = thermophysical_parameters[6]
     k = thermophysical_parameters[7]
+
+    lambda_array = []
+    q_array = []
+    for i in range(number_section):
+
+        if (i <= chbr_sec_count + subsn_sec_count):
+            q = 1/D_otn[i]
+            lmbd = get_lambda(q,k, key = "Subsonic")
+        else:
+            q = 1 / D_otn[i]
+            lmbd = get_lambda(q,k, key="Supersonic")
+
+        lambda_array.append(lmbd)
+        q_array.append(1/D_otn[i])
+
+    a = 1
 
 
 def heat_protection_main(X_list: list[float], D_list: list[float], n_section: int, gemtr_list: list[float],
