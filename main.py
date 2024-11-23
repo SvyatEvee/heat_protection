@@ -51,17 +51,17 @@ if __name__ == "__main__":
 
     # Теплофизические параметры продуктов сгорания
 
-    thermophysical_parameters = [] # [Pr, mu_T0, R_T0, T_st_usl, T_0g, cp_st_usl, cp_T0, k]
+    thermophysical_parameters = [] # [Pr, mu_T0, R_T0, T_st_usl, T_0g, cp_st_usl, cp_T0, k, p_k]
 
     Pr = 0.75
-    mu_T0 = 1
-    R_T0 = 1
-    T_st_usl = 600
-    T_0g = 2000
-    cp_st_usl = 1
-    cp_T0 = 1
-    k = 1.4
-    p_k = 10
+    mu_T0 = 9.67 * 10**-5
+    R_T0 = 344.59
+    T_st_usl = 1000
+    T_0g = 3751
+    cp_st_usl = 1630
+    cp_T0 = 2020
+    k = 1.2
+    p_k = 10 * 10**6
 
     thermophysical_parameters.append(Pr)
     thermophysical_parameters.append(mu_T0)
@@ -71,5 +71,6 @@ if __name__ == "__main__":
     thermophysical_parameters.append(cp_st_usl)
     thermophysical_parameters.append(cp_T0)
     thermophysical_parameters.append(k)
+    thermophysical_parameters.append(p_k)
 
     htprt.heat_protection_main(X_list, D_list, n_section, gemtr_list, cooling_path_param, thermophysical_parameters)

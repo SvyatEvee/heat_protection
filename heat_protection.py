@@ -306,50 +306,67 @@ def calc_convect_flow(table_geom: list[list[float]], section: list[list[float]],
     cp_st_usl = thermophysical_parameters[5]
     cp_T0 = thermophysical_parameters[6]
     k = thermophysical_parameters[7]
+    p_k = thermophysical_parameters[8]
 
-    # определение лямбды
 
-    lambda_array = []
-    q_array = []
+    lmbd = [0] * number_section
+    betta = [0] * number_section
+    S = [0] * number_section
+    T_st_otn = [0] * number_section
+    q_convect = [0] * number_section
+
+    if F_otn[0] >= 3.5:
+        epsilon = 1
+    else:
+        epsilon = float(input("Относительная площадь камеры сгорания меньше 3,5, введите epsilon"))
+
+
     for i in range(number_section):
 
         if (i <= chbr_sec_count + subsn_sec_count):
-            q = 1/(D_otn[i])**2
-            lmbd = get_lambda(q,k, key = "Subsonic")
+            q = 1 / (D_otn[i]) ** 2
+            lmbd[i] = get_lambda(q, k, key="Subsonic")
         else:
-            q = 1 / (D_otn[i])**2
-            lmbd = get_lambda(q,k, key="Supersonic")
+            q = 1 / (D_otn[i]) ** 2
+            lmbd[i] = get_lambda(q, k, key="Supersonic")
 
-        lambda_array.append(lmbd)
-        q_array.append(1/D_otn[i]**2)
+            # lambda_array.append(lmbd)
+            # q_array.append(1 / D_otn[i] ** 2)
 
-    # расчет конвективного теплового потока
+        # расчет конвективного теплового потока
 
-    cp_sr = (cp_st_usl + cp_T0) / 2
-    T_st_otn = T_st_usl/T_0g
+        cp_sr = (cp_st_usl + cp_T0) / 2
+        T_st_otn[i] = T_st_usl / T_0g
 
-    S = (2.065 * cp_sr * (T_0g - T_st_usl) * mu_T0**0.15) / ( (R_T0 * T_0g)**0.425 * (1 + T_st_otn)**0.595 * (3 + T_st_otn)**0.15)
+        S[i] = (2.065 * cp_sr * (T_0g - T_st_usl) * mu_T0 ** 0.15) / (
+                    (R_T0 * T_0g) ** 0.425 * (1 + T_st_otn[i]) ** 0.595 * (3 + T_st_otn[i]) ** 0.15)
 
-    alpha = 1.813 * (2 / (k+1))**(0.85/(k-1)) * ((2*k) / (k+1))**0.425
-    betta = lmbd * ((k-1) / (k+1))**0.5
+        alpha = 1.813 * (2 / (k + 1)) ** (0.85 / (k - 1)) * ((2 * k) / (k + 1)) ** 0.425
+        betta[i] = lmbd[i] * ((k - 1) / (k + 1)) ** 0.5
 
-    Z = ( 1.769 * (1 - betta**2 + betta**2 * (1 - 0.086*(1 - betta**2) / (1 - T_st_otn - 0.1*betta**2))) / (1 - 0.086*(1 - betta**2) / (1 - T_st_otn - 0.1*betta**2)) )**0.54
+        Z = (1.769 * (1 - betta[i] ** 2 + betta[i] ** 2 * (
+                    1 - 0.086 * (1 - betta[i] ** 2) / (1 - T_st_otn[i] - 0.1 * betta[i] ** 2))) / (
+                         1 - 0.086 * (1 - betta[i] ** 2) / (1 - T_st_otn[i] - 0.1 * betta[i] ** 2))) ** 0.54
 
-    A = 0.01352
-    B = 0.4842 * alpha * A * Z**0.075
-    # надо все это говно в цикл закинуть
-    q_convect = B * ((1- betta**2) * epsilon * p_k**0.85 * S) / ()
+        A = 0.01352
+        B = 0.4842 * alpha * A * Z ** 0.075
+
+        q_convect[i] = B * ((1 - betta[i] ** 2) * epsilon * p_k ** 0.85 * S[i]) / (D_otn[i]**1.82 * (d_kr * 10**-3)**0.15 * Pr**0.58)
+
+
+    return [lmbd, betta, S, T_st_otn, q_convect]
+
 
 def heat_protection_main(X_list: list[float], D_list: list[float], n_section: int, gemtr_list: list[float],
                          cooling_path_param: list[float], thermophysical_parameters: list[float]) -> None:
 
-    x_section, d_section, section = init_mesh(X_list, D_list, n_section, gemtr_list)
+    x_section, d_section, section = init_mesh(X_list, D_list, n_section, gemtr_list)  # [number_section, chbr_sect_count, subsn_sect_count, supsn_sect_count]
 
-    table_geom = set_geom_data_table(x_section, d_section, section[0], gemtr_list)
+    table_geom = set_geom_data_table(x_section, d_section, section[0], gemtr_list)  # [D_otn, F_sect, F_otn, dx, dxs, dS]
 
     cooling_path_table = set_cooling_path_table(x_section, d_section, section, cooling_path_param)
 
-    calc_convect_flow(table_geom, section, gemtr_list, thermophysical_parameters)
+    heat_flow_table = calc_convect_flow(table_geom, section, gemtr_list, thermophysical_parameters)
 
 
     print(x_section[-1])
