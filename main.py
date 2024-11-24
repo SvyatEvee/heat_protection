@@ -17,13 +17,25 @@ def get_init_data() -> [list[float]]:
 
     return x_data, d_data, number_of_section
 
+
+def get_cooler_data() -> list[float]:
+
+    file = pd.read_excel("c_cooler.xlsx", header = 0)
+    ro_cool = list(file["ro"])
+    T_cool = list(file["T"])
+    C_cool = list(file["C"])
+    m_cooler = 6.571
+    T_start_cooler = 293
+
+    return [T_cool, C_cool, ro_cool, m_cooler, T_start_cooler]
+
 if __name__ == "__main__":
 
     X_list, D_list, n_section = get_init_data()
 
 
     # Параметры сопла
-    gemtr_list = [] # [l_kam, D_kam, X_kr, D_kr, x_cooling_change]
+    gemtr_list = [] # [l_kam, D_kam, X_kr, D_kr, x_cooling_change] # длина камеры должна быть больше 50 мм
 
     x_cooling_change = 700 # точка смены проточного охлаждения на радиационное
 
@@ -51,7 +63,7 @@ if __name__ == "__main__":
 
     # Теплофизические параметры продуктов сгорания
 
-    thermophysical_parameters = [] # [Pr, mu_T0, R_T0, T_st_usl, T_0g, cp_st_usl, cp_T0, k, p_k]
+    thermophysical_parameters = [] # [Pr, mu_T0, R_T0, T_st_usl, T_0g, cp_st_usl, cp_T0, k, p_k, epsilon_g, epsilon_st]
 
     Pr = 0.75
     mu_T0 = 9.67 * 10**-5
@@ -62,6 +74,10 @@ if __name__ == "__main__":
     cp_T0 = 2020
     k = 1.2
     p_k = 10 * 10**6
+    epsilon_g = 0.25
+    epsilon_st = 0.8
+    fi = 0.9
+
 
     thermophysical_parameters.append(Pr)
     thermophysical_parameters.append(mu_T0)
@@ -72,5 +88,11 @@ if __name__ == "__main__":
     thermophysical_parameters.append(cp_T0)
     thermophysical_parameters.append(k)
     thermophysical_parameters.append(p_k)
+    thermophysical_parameters.append(epsilon_g)
+    thermophysical_parameters.append(epsilon_st)
+    thermophysical_parameters.append(fi)
 
-    htprt.heat_protection_main(X_list, D_list, n_section, gemtr_list, cooling_path_param, thermophysical_parameters)
+
+    cooler_data = get_cooler_data()
+
+    htprt.heat_protection_main(X_list, D_list, n_section, gemtr_list, cooling_path_param, thermophysical_parameters, cooler_data)
