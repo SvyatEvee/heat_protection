@@ -37,7 +37,7 @@ if __name__ == "__main__":
     # Параметры сопла
     gemtr_list = [] # [l_kam, D_kam, X_kr, D_kr, x_cooling_change] # длина камеры должна быть больше 50 мм
 
-    x_cooling_change = 700 # точка смены проточного охлаждения на радиационное
+    x_cooling_change = 1500 # точка смены проточного охлаждения на радиационное
 
     gemtr_list.append(X_list.pop())
     gemtr_list.append(D_list.pop())
@@ -66,17 +66,18 @@ if __name__ == "__main__":
     thermophysical_parameters = [] # [Pr, mu_T0, R_T0, T_st_usl, T_0g, cp_st_usl, cp_T0, k, p_k, epsilon_g, epsilon_st]
 
     Pr = 0.75
-    mu_T0 = 9.67 * 10**-5
-    R_T0 = 344.59
+    mu_T0 = 5.98 * 10**-5
+    R_T0 = 509
     T_st_usl = 1000
-    T_0g = 3751
-    cp_st_usl = 1630
-    cp_T0 = 2020
-    k = 1.2
+    T_0g = 2000
+    cp_st_usl = 2029
+    cp_T0 = 2235
+    k = 1.29
     p_k = 10 * 10**6
     epsilon_g = 0.25
     epsilon_st = 0.8
     fi = 0.9
+    T_k = 3750
 
 
     thermophysical_parameters.append(Pr)
@@ -91,6 +92,7 @@ if __name__ == "__main__":
     thermophysical_parameters.append(epsilon_g)
     thermophysical_parameters.append(epsilon_st)
     thermophysical_parameters.append(fi)
+    thermophysical_parameters.append(T_k)
 
 
     cooler_data = get_cooler_data()

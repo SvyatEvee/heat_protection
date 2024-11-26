@@ -314,6 +314,7 @@ def calc_heat_flow(x_section: list[float], table_geom: list[list[float]], sectio
     epsilon_g = thermophysical_parameters[9]
     epsilon_st = thermophysical_parameters[10]
     fi = thermophysical_parameters[11]
+    T_k = thermophysical_parameters[12]
 
     lmbd = [0] * (number_section + 1)
     betta = [0] * (number_section + 1)
@@ -334,7 +335,7 @@ def calc_heat_flow(x_section: list[float], table_geom: list[list[float]], sectio
 
     c0 = 5.67
 
-    q_rad_Km = epsilon_st_eff * epsilon_g * c0 * (T_0g/100)**4
+    q_rad_Km = epsilon_st_eff * epsilon_g * c0 * (T_k/100)**4
 
     q_l_ks = fi * q_rad_Km
 
@@ -386,7 +387,13 @@ def calc_heat_flow(x_section: list[float], table_geom: list[list[float]], sectio
     return [lmbd, betta, S, T_st_otn, q_convect, q_rad, q_sum]
 
 
-def calc_cooling_path(table_geom, section, gemtr_list, cooler_data, heat_flow_table):
+def calc_cooling_path(x_section: list[float], table_geom, section, gemtr_list, cooler_data, heat_flow_table):
+
+    l_kam = gemtr_list[0]
+    d_kam = gemtr_list[1]
+    x_kr = gemtr_list[2]
+    d_kr = gemtr_list[3]
+    x_cooling_change = gemtr_list[4]
 
     D_otn = table_geom[0]
     F_sect = table_geom[1]
@@ -408,6 +415,57 @@ def calc_cooling_path(table_geom, section, gemtr_list, cooler_data, heat_flow_ta
     T_start_cooler = cooler_data[4]
 
 
+    # Определяем точку смены функциональных схем охлаждения
+    for i in range(number_section):
+        if i == 90:
+            a = 0
+        if (x_section[i] < x_cooling_change) and (x_cooling_change <= x_section[i+1]):
+            change_section = i
+        if (x_cooling_change > x_section[number_section]):
+            change_section = number_section - 1
+
+    T_cooler = [0] * (change_section+2)
+    T_cooler[change_section+1] = T_start_cooler
+
+    for i in range(change_section,-1,-1):
+
+        dT = 30
+
+        while(True):
+
+            T_sr = T_start_cooler + 0.5 * dT
+
+            for j in range(len(T_cool)-1):
+                if (T_cool[j] > T_sr) and (T_sr <= T_cool[j+1]):
+                    C_sr = C_cool[j] + (T_sr - T_cool[j]) * (C_cool[j+1] - C_cool[j]) / (T_cool[j+1] - T_cool[j])
+                    break
+                if (T_sr > T_cool[len(T_cool)-1]):
+                    C_sr = C_cool[len(T_cool)-2] + (T_sr - T_cool[len(T_cool)-2]) * (C_cool[len(T_cool)-1] - C_cool[len(T_cool)-2]) / (
+                                T_cool[len(T_cool)-1] - T_cool[len(T_cool)-2])
+                    break
+
+            dT = 0.5 * (q_sum[i] + q_sum[i+1]) * dS[i] / (m_cooler * C_sr)
+
+            T_sr = T_start_cooler + 0.5 * dT
+
+            C_sr1 = C_sr
+            for j in range(len(T_cool)-1):
+                if (T_cool[j] > T_sr) and (T_sr <= T_cool[j+1]):
+                    C_sr = C_cool[j] + (T_sr - T_cool[j]) * (C_cool[j+1] - C_cool[j]) / (T_cool[j+1] - T_cool[j])
+                    break
+                if (T_sr > T_cool[len(T_cool)-1]):
+                    C_sr = C_cool[len(T_cool)-2] + (T_sr - T_cool[len(T_cool)-2]) * (C_cool[len(T_cool)-1] - C_cool[len(T_cool)-2]) / (
+                                T_cool[len(T_cool)-1] - T_cool[len(T_cool)-2])
+                    break
+
+            if (abs(C_sr - C_sr1)/C_sr < 0.05):
+                T_start_cooler = T_start_cooler + dT
+                break
+
+        T_cooler[i] = T_start_cooler
+
+
+
 
 def heat_protection_main(X_list: list[float], D_list: list[float], n_section: int, gemtr_list: list[float],
                          cooling_path_param: list[float], thermophysical_parameters: list[float], cooler_data: list[float]) -> None:
@@ -420,6 +478,7 @@ def heat_protection_main(X_list: list[float], D_list: list[float], n_section: in
 
     heat_flow_table = calc_heat_flow(x_section, table_geom, section, gemtr_list, thermophysical_parameters)
 
+    calc_cooling_path(x_section, table_geom, section, gemtr_list, cooler_data, heat_flow_table)
 
     print(x_section[-1])
 
