@@ -1,4 +1,4 @@
-import main as rd
+﻿import main as rd
 import math
 
 
@@ -318,7 +318,6 @@ def calc_heat_flow(x_section: list[float], table_geom: list[list[float]], sectio
     cp_st = thermophysical_parameters[13]
     T_wall = thermophysical_parameters[14]
 
-
     lmbd = [0] * (number_section + 1)
     betta = [0] * (number_section + 1)
     S = [0] * (number_section + 1)
@@ -401,8 +400,8 @@ def calc_heat_flow(x_section: list[float], table_geom: list[list[float]], sectio
     return [lmbd, betta, S, T_st_otn, q_convect, q_rad, q_sum]
 
 
-def calc_cooling_path(x_section: list[float], table_geom, section, gemtr_list, cooler_data, heat_flow_table, cooling_path_table,
-                      cooling_path_param):
+def calc_cooling_path(T_wall, x_section: list[float], table_geom, section, gemtr_list, cooler_data, heat_flow_table, cooling_path_table,
+                      cooling_path_param, lamda_wall_table):
 
     l_kam = gemtr_list[0]
     d_kam = gemtr_list[1]
@@ -444,7 +443,10 @@ def calc_cooling_path(x_section: list[float], table_geom, section, gemtr_list, c
     delt_r = cooling_path_param[2] * 10 ** -3
     betta = cooling_path_param[3]
     height = cooling_path_param[4] * 10 ** -3
-    lambda_wall = cooling_path_param[5]
+
+
+    T_lambda = lamda_wall_table[0]
+    lambda_wall = lamda_wall_table[1]
 
     # Определяем точку смены функциональных схем охлаждения
     for i in range(number_section):
@@ -461,9 +463,51 @@ def calc_cooling_path(x_section: list[float], table_geom, section, gemtr_list, c
     ny_rebra = [0] * (change_section+2)
 
 
-
-
     T_cooler[change_section+1] = T_start_cooler
+
+    for j in range(len(T_cool) - 1):
+        if (T_cool[j] < T_start_cooler) and (T_start_cooler <= T_cool[j + 1]):
+            C_sr = C_cool[j] + (T_start_cooler - T_cool[j]) * (C_cool[j + 1] - C_cool[j]) / (T_cool[j + 1] - T_cool[j])
+            ro_cool_sr = ro_cool[j] + (T_start_cooler - T_cool[j]) * (ro_cool[j + 1] - ro_cool[j]) / (
+                    T_cool[j + 1] - T_cool[j])
+            K_cool_sr = K_cool[j] + (T_start_cooler - T_cool[j]) * (K_cool[j + 1] - K_cool[j]) / (
+                    T_cool[j + 1] - T_cool[j])
+            break
+        if (T_start_cooler > T_cool[len(T_cool) - 1]):
+            C_sr = C_cool[len(T_cool) - 2] + (T_start_cooler - T_cool[len(T_cool) - 2]) * (
+                        C_cool[len(T_cool) - 1] - C_cool[len(T_cool) - 2]) / (
+                           T_cool[len(T_cool) - 1] - T_cool[len(T_cool) - 2])
+            ro_cool_sr = ro_cool[len(T_cool) - 2] + (T_start_cooler - T_cool[len(T_cool) - 2]) * (
+                    ro_cool[len(T_cool) - 1] - ro_cool[len(T_cool) - 2]) / (
+                                 T_cool[len(T_cool) - 1] - T_cool[len(T_cool) - 2])
+            K_cool_sr = K_cool[len(T_cool) - 2] + (T_start_cooler - T_cool[len(T_cool) - 2]) * (
+                    K_cool[len(T_cool) - 1] - K_cool[len(T_cool) - 2]) / (
+                                T_cool[len(T_cool) - 1] - T_cool[len(T_cool) - 2])
+            break
+
+    roU = m_cooler / f[change_section+1]
+
+    U_cooler[change_section+1] = roU / ro_cool_sr
+    alpha_cooler[change_section+1] = 0.023 * K_cool_sr * roU ** 0.8 / D_g[change_section+1] ** 0.2
+
+    # Определяем коэффициент оребрения
+
+    for j in range(len(T_lambda) - 1):
+        if (T_lambda[j] < T_wall[change_section+1]) and (T_wall[change_section+1] <= T_lambda[j + 1]):
+            lambda_wall_sr = lambda_wall[j] + (T_wall[change_section+1] - T_lambda[j]) * (lambda_wall[j + 1] - lambda_wall[j]) / (
+                    T_lambda[j + 1] - T_lambda[j])
+            break
+        if (T_wall[change_section+1] > T_lambda[len(T_lambda) - 1]):
+            lambda_wall_sr = lambda_wall[len(T_lambda) - 2] + (T_wall[change_section+1] - T_lambda[len(T_lambda) - 2]) * (
+                    lambda_wall[len(T_lambda) - 1] - lambda_wall[len(T_lambda) - 2]) / (
+                                     T_lambda[len(T_lambda) - 1] - T_lambda[len(T_lambda) - 2])
+            break
+
+    psi = height / delt_r * (2 * alpha_cooler[change_section+1] * delt_r / lambda_wall_sr) ** 0.5
+
+    E = math.tanh(psi) / psi
+
+    ny_rebra[change_section+1] = 1 + 1 / math.cos(betta / 180 * math.pi) * (2 * height / t[change_section+1] * E * 1 - delt_r / t[change_section+1])
 
     # расчет таблицы для охладителя
 
@@ -494,8 +538,6 @@ def calc_cooling_path(x_section: list[float], table_geom, section, gemtr_list, c
                     C_sr = C_cool[j] + (T_sr - T_cool[j]) * (C_cool[j+1] - C_cool[j]) / (T_cool[j+1] - T_cool[j])
                     ro_cool_sr = ro_cool[j] + (T_sr - T_cool[j]) * (ro_cool[j + 1] - ro_cool[j]) / (
                                 T_cool[j + 1] - T_cool[j])
-                    lambda_cool_sr = lambda_cool[j] + (T_sr - T_cool[j]) * (lambda_cool[j + 1] - lambda_cool[j]) / (
-                            T_cool[j + 1] - T_cool[j])
                     K_cool_sr = K_cool[j] + (T_sr - T_cool[j]) * (K_cool[j + 1] - K_cool[j]) / (
                             T_cool[j + 1] - T_cool[j])
                     break
@@ -505,9 +547,6 @@ def calc_cooling_path(x_section: list[float], table_geom, section, gemtr_list, c
                     ro_cool_sr = ro_cool[len(T_cool) - 2] + (T_sr - T_cool[len(T_cool) - 2]) * (
                             ro_cool[len(T_cool) - 1] - ro_cool[len(T_cool) - 2]) / (
                                    T_cool[len(T_cool) - 1] - T_cool[len(T_cool) - 2])
-                    lambda_cool_sr = lambda_cool[len(T_cool) - 2] + (T_sr - T_cool[len(T_cool) - 2]) * (
-                            lambda_cool[len(T_cool) - 1] - lambda_cool[len(T_cool) - 2]) / (
-                                             T_cool[len(T_cool) - 1] - T_cool[len(T_cool) - 2])
                     K_cool_sr = K_cool[len(T_cool) - 2] + (T_sr - T_cool[len(T_cool) - 2]) * (
                             K_cool[len(T_cool) - 1] - K_cool[len(T_cool) - 2]) / (
                                         T_cool[len(T_cool) - 1] - T_cool[len(T_cool) - 2])
@@ -526,7 +565,18 @@ def calc_cooling_path(x_section: list[float], table_geom, section, gemtr_list, c
 
         # Определяем коэффициент оребрения
 
-        psi = height / delt_r * (2 * alpha_cooler[i] * delt_r / lambda_wall)**0.5
+        for j in range(len(T_lambda) - 1):
+            if (T_lambda[j] < T_wall[i]) and (T_wall[i] <= T_lambda[j + 1]):
+                lambda_wall_sr = lambda_wall[j] + (T_wall[i] - T_lambda[j]) * (lambda_wall[j + 1] - lambda_wall[j]) / (
+                            T_lambda[j + 1] - T_lambda[j])
+                break
+            if (T_wall[i] > T_lambda[len(T_lambda) - 1]):
+                lambda_wall_sr = lambda_wall[len(T_lambda) - 2] + (T_wall[i] - T_lambda[len(T_lambda) - 2]) * (
+                            lambda_wall[len(T_lambda) - 1] - lambda_wall[len(T_lambda) - 2]) / (
+                                         T_lambda[len(T_lambda) - 1] - T_lambda[len(T_lambda) - 2])
+                break
+
+        psi = height / delt_r * (2 * alpha_cooler[i] * delt_r / lambda_wall_sr)**0.5
 
         E = math.tanh(psi) / psi
 
@@ -535,24 +585,17 @@ def calc_cooling_path(x_section: list[float], table_geom, section, gemtr_list, c
     return [T_cooler, U_cooler, alpha_cooler, ny_rebra]
 
 def calc_hot_wall(x_section, gemtr_list, section, heat_flow_table, cooler_table, cooling_path_table, cooling_path_param,
-                  lamda_wall_table, thermophysical_parameters):
+                  lamda_wall_table, thermophysical_parameters, T_wall):
 
-    l_kam = gemtr_list[0]
-    d_kam = gemtr_list[1]
-    x_kr = gemtr_list[2]
-    d_kr = gemtr_list[3]
     x_cooling_change = gemtr_list[4]
 
     number_section = section[0]
-    chbr_sec_count = section[1]
-    subsn_sec_count = section[2]
 
     inner_wall = cooling_path_param[0] * 10 ** -3
     outer_wall = cooling_path_param[1] * 10 ** -3
     delt_r = cooling_path_param[2] * 10 ** -3
     betta = cooling_path_param[3]
     height = cooling_path_param[4] * 10 ** -3
-    lambda_wall = cooling_path_param[5]
 
     q_convect = heat_flow_table[4]
     q_rad = heat_flow_table[5]
@@ -562,6 +605,11 @@ def calc_hot_wall(x_section, gemtr_list, section, heat_flow_table, cooler_table,
     ny_rebra = cooler_table[3]
 
     T_0g = thermophysical_parameters[4]
+
+    T_lambda = lamda_wall_table[0]
+    lambda_wall = lamda_wall_table[1]
+
+
 
 
     # Определяем точку смены функциональных схем охлаждения
@@ -573,9 +621,159 @@ def calc_hot_wall(x_section, gemtr_list, section, heat_flow_table, cooler_table,
         if (x_cooling_change > x_section[number_section]):
             change_section = number_section - 1
 
+    T_wall_cold = [0] * (change_section + 2)
+
+    for i in range(0, number_section+1):
+
+        if (i <= change_section + 1):
+
+            for j in range(len(T_lambda)-1):
+                if (T_lambda[j] < T_wall[i]) and (T_wall[i] <= T_lambda[j+1]):
+                    lambda_wall_sr = lambda_wall[j] + (T_wall[i] - T_lambda[j]) * (lambda_wall[j+1] - lambda_wall[j]) / (T_lambda[j+1] - T_lambda[j])
+                    break
+                if (T_wall[i] > T_lambda[len(T_lambda)-1]):
+                    lambda_wall_sr = lambda_wall[len(T_lambda)-2] + (T_wall[i] - T_lambda[len(T_lambda)-2]) * (lambda_wall[len(T_lambda)-1] - lambda_wall[len(T_lambda)-2]) / (
+                                T_lambda[len(T_lambda)-1] - T_lambda[len(T_lambda)-2])
+                    break
+
+
+            T_wall[i] = ( ((T_0g/(T_0g - T_wall[i])) + T_cooler[i] / (inner_wall/lambda_wall_sr + 1 / (alpha_cooler[i]*ny_rebra[i])) / q_convect[i] + q_rad[i]/q_convect[i])
+                         / ( ( 1/(T_0g - T_wall[i]) ) + 1 / (inner_wall/lambda_wall_sr + 1 / (alpha_cooler[i]*ny_rebra[i])) / q_convect[i] )  )
+
+            T_wall_cold[i] = T_wall[i] - (inner_wall / lambda_wall_sr) * (q_rad[i] + q_convect[i])
+
+        else:
+            epsilon_g = 0.1
+            epsilon_st = 0.35
+            epsilon_stn = 0.9
+            c0 = 5.67
+
+            T_wall[i] = 100 * ( (q_convect[i] + q_rad[i]) / (c0 * (epsilon_stn*epsilon_g + epsilon_st)))**(1/4)
+
+    a = 1
+
+
+def calc_hydraulic_losses(x_section, table_geom, gemtr_list, section, cooling_path_table, cooler_table,
+                          cooling_path_param, cooler_data, correction_hydr_resist):
+
+    x_cooling_change = gemtr_list[4]
+
+    D_otn = table_geom[0]
+    F_sect = table_geom[1]
+    F_otn = table_geom[2]
+    dx = table_geom[3]
+    dxs = table_geom[4]
+    dS = table_geom[5]
+
+    number_section = section[0]
+
+    T_cool = cooler_data[0]
+    C_cool = cooler_data[1]
+    ro_cool = cooler_data[2]
+    m_cooler = cooler_data[3]
+    T_start_cooler = cooler_data[4]
+    lambda_cool = cooler_data[5]
+    K_cool = cooler_data[6]
+    nu_cool = cooler_data[7]
+
+    # table = [Nr, t, tN, f, D_g]
+
+    Nr = cooling_path_table[0]
+    t = cooling_path_table[1]
+    tN = cooling_path_table[2]
+    f = cooling_path_table[3]
+    D_g = cooling_path_table[4]
+
+    inner_wall = cooling_path_param[0] * 10 ** -3
+    outer_wall = cooling_path_param[1] * 10 ** -3
+    delt_r = cooling_path_param[2] * 10 ** -3
+    betta = cooling_path_param[3]
+    height = cooling_path_param[4] * 10 ** -3
+
+    T_cooler = cooler_table[0]
+    U_cooler = cooler_table[1]
+
+    side_ratio = correction_hydr_resist[0]
+    omega = correction_hydr_resist[1]
+
+    # Определяем точку смены функциональных схем охлаждения
+    for i in range(number_section):
+        if i == 90:
+            a = 0
+        if (x_section[i] < x_cooling_change) and (x_cooling_change <= x_section[i + 1]):
+            change_section = i + 1
+        if (x_cooling_change > x_section[number_section]):
+            change_section = number_section - 1
+
+    Re = [0] * (change_section + 1)
+    dzeta = [0] * (change_section + 1)
+    l = [0] * (change_section + 1)
+    delta_p = [0] * (change_section + 1)
+
+    delta_p_sum = 0
+
+    for i in range(0, change_section + 1):
+
+        roU = m_cooler / f[i]
+
+        for j in range(len(T_cool) - 1):
+            if (T_cool[j] < T_cooler[i]) and (T_cooler[i] <= T_cool[j + 1]):
+                nu_sr = nu_cool[j] + (T_cooler[i] - T_cool[j]) * (nu_cool[j + 1] - nu_cool[j]) / (T_cool[j + 1] - T_cool[j])
+                ro_cool_sr = ro_cool[j] + (T_cooler[i] - T_cool[j]) * (ro_cool[j + 1] - ro_cool[j]) / (
+                        T_cool[j + 1] - T_cool[j])
+                break
+            if (T_cooler[i] > T_cool[len(T_cool) - 1]):
+                nu_sr = nu_cool[len(T_cool) - 2] + (T_cooler[i] - T_cool[len(T_cool) - 2]) * (
+                            nu_cool[len(T_cool) - 1] - nu_cool[len(T_cool) - 2]) / (
+                               T_cool[len(T_cool) - 1] - T_cool[len(T_cool) - 2])
+                ro_cool_sr = ro_cool[len(T_cool) - 2] + (T_cooler[i] - T_cool[len(T_cool) - 2]) * (
+                        ro_cool[len(T_cool) - 1] - ro_cool[len(T_cool) - 2]) / (
+                                     T_cool[len(T_cool) - 1] - T_cool[len(T_cool) - 2])
+                break
+
+
+        Re[i] = roU * D_g[i] / nu_sr
+        l[i] = dxs[i] / math.cos(betta / 180 * math.pi)
+        delta = 1 * 10**-5
+        delta_otn = delta / D_g[i]
+
+
+        side_ab = (t[i] - delt_r) / height
+
+        for j in range(len(side_ratio) - 1):
+            if (side_ratio[j] < side_ab) and (side_ab <= side_ratio[j + 1]):
+                omega_sr = omega[j] + (side_ab - side_ratio[j]) * (omega[j + 1] - omega[j]) / (side_ratio[j + 1] - side_ratio[j])
+                break
+            if (side_ab > side_ratio[len(side_ratio) - 1]):
+                omega_sr = omega[len(side_ratio) - 2] + (side_ab - side_ratio[len(side_ratio) - 2]) * (
+                            omega[len(side_ratio) - 1] - omega[len(side_ratio) - 2]) / (
+                               side_ratio[len(side_ratio) - 1] - side_ratio[len(side_ratio) - 2])
+                break
+
+        # определяем коэффициент гидросопротивления
+        if (Re[i] < 3500):
+
+            dzeta[i] = 64 * omega_sr / Re[i]
+
+        elif ( 3500 <= Re[i] and Re[i] < 560/delta_otn ):
+
+            if (delta_otn >= 0.01):
+                dzeta[i] = 0.1 * (1.46*delta_otn + 100 / Re[i])**0.25 * omega_sr
+            else:
+                dzeta[i] = 1.42 * omega_sr / (math.log10(Re[i] / delta_otn))**2
+        else:
+            dzeta[i] = omega_sr / (2 * math.log10(3.7 / delta_otn))**2
+
+    # Определяем потери давления
+
+        delta_p[i] =  dzeta[i] * ro_cool_sr * U_cooler[i]**2 / 2 * l[i] / D_g[i]
+        delta_p_sum += delta_p[i]
+
+    a = 1
+
 def heat_protection_main(X_list: list[float], D_list: list[float], n_section: int, gemtr_list: list[float],
                          cooling_path_param: list[float], thermophysical_parameters: list[float], cooler_data: list[float],
-                         lamda_wall_table) -> None:
+                         lamda_wall_table, correction_hydr_resist) -> None:
 
     x_section, d_section, section = init_mesh(X_list, D_list, n_section, gemtr_list)  # [number_section, chbr_sect_count, subsn_sect_count, supsn_sect_count]
 
@@ -583,10 +781,53 @@ def heat_protection_main(X_list: list[float], D_list: list[float], n_section: in
 
     cooling_path_table = set_cooling_path_table(x_section, d_section, section, cooling_path_param)
 
-    T_st = [thermophysical_parameters[3]] * (n_section + 1)
-    heat_flow_table = calc_heat_flow(x_section, table_geom, section, gemtr_list, thermophysical_parameters, T_st)
+    T_wall = [thermophysical_parameters[3]] * (n_section + 1)
+    heat_flow_table = calc_heat_flow(x_section, table_geom, section, gemtr_list, thermophysical_parameters, T_wall)
 
-    cooler_table = calc_cooling_path(x_section, table_geom, section, gemtr_list, cooler_data, heat_flow_table, cooling_path_table, cooling_path_param)
+    cooler_table = calc_cooling_path(T_wall, x_section, table_geom, section, gemtr_list, cooler_data, heat_flow_table, cooling_path_table, cooling_path_param, lamda_wall_table)
+
+    calc_hot_wall(x_section, gemtr_list, section, heat_flow_table, cooler_table, cooling_path_table, cooling_path_param,
+                  lamda_wall_table, thermophysical_parameters, T_wall)
+
+# 2-я итерация расчета
+
+    heat_flow_table = calc_heat_flow(x_section, table_geom, section, gemtr_list, thermophysical_parameters, T_wall)
+
+    cooler_table = calc_cooling_path(T_wall, x_section, table_geom, section, gemtr_list, cooler_data, heat_flow_table,
+                                     cooling_path_table, cooling_path_param, lamda_wall_table)
+    calc_hot_wall(x_section, gemtr_list, section, heat_flow_table, cooler_table, cooling_path_table, cooling_path_param,
+                  lamda_wall_table, thermophysical_parameters, T_wall)
+
+# 3-я итерация расчета
+
+    heat_flow_table = calc_heat_flow(x_section, table_geom, section, gemtr_list, thermophysical_parameters, T_wall)
+
+    cooler_table = calc_cooling_path(T_wall, x_section, table_geom, section, gemtr_list, cooler_data, heat_flow_table,
+                                     cooling_path_table, cooling_path_param, lamda_wall_table)
+    calc_hot_wall(x_section, gemtr_list, section, heat_flow_table, cooler_table, cooling_path_table, cooling_path_param,
+                  lamda_wall_table, thermophysical_parameters, T_wall)
+
+# 4-я итерация расчета
+
+    heat_flow_table = calc_heat_flow(x_section, table_geom, section, gemtr_list, thermophysical_parameters, T_wall)
+
+    cooler_table = calc_cooling_path(T_wall, x_section, table_geom, section, gemtr_list, cooler_data, heat_flow_table,
+                                     cooling_path_table, cooling_path_param, lamda_wall_table)
+    calc_hot_wall(x_section, gemtr_list, section, heat_flow_table, cooler_table, cooling_path_table, cooling_path_param,
+                  lamda_wall_table, thermophysical_parameters, T_wall)
+
+# 5-я итерация расчета
+
+    heat_flow_table = calc_heat_flow(x_section, table_geom, section, gemtr_list, thermophysical_parameters, T_wall)
+
+    cooler_table = calc_cooling_path(T_wall, x_section, table_geom, section, gemtr_list, cooler_data, heat_flow_table,
+                                     cooling_path_table, cooling_path_param, lamda_wall_table)
+    calc_hot_wall(x_section, gemtr_list, section, heat_flow_table, cooler_table, cooling_path_table, cooling_path_param,
+                  lamda_wall_table, thermophysical_parameters, T_wall)
+
+# Считаем гидропотери
+    calc_hydraulic_losses(x_section, table_geom, gemtr_list, section, cooling_path_table, cooler_table,
+                          cooling_path_param, cooler_data, correction_hydr_resist)
 
     print(x_section[-1])
 

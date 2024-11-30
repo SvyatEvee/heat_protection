@@ -26,10 +26,11 @@ def get_cooler_data() -> list[float]:
     C_cool = list(file["C"])
     lamda_cool = list(file["lambda"])
     K_cool = list(file["K"])
-    m_cooler = 6.571
+    m_cooler = 26.571
     T_start_cooler = 293
+    nu_cool = list(file["nu"])
 
-    return [T_cool, C_cool, ro_cool, m_cooler, T_start_cooler, lamda_cool, K_cool]
+    return [T_cool, C_cool, ro_cool, m_cooler, T_start_cooler, lamda_cool, K_cool, nu_cool]
 
 def get_thermo(n_section: int):
 
@@ -39,7 +40,7 @@ def get_thermo(n_section: int):
     Pr = 0.75
     mu_T0 = float(df["mu0"][0])
     R_T0 = float(df["R0"][0])
-    T_st_usl = 1000
+    T_st_usl = 600
     T_0g = float(df["T0"][0])
     cp_st_usl = 2029
     cp_T0 = float(df["cp0"][0])
@@ -80,6 +81,16 @@ def get_wall_param():
 
     return [T, lambda_wall]
 
+def get_hydraulic_data():
+
+    df = pd.read_excel("correction_hydraulic_resistances.xlsx", header=0)
+
+    side_ratio = list(df["a/b"])
+    omega = list(df["omega"])
+
+    return [side_ratio, omega]
+
+
 if __name__ == "__main__":
 
     X_list, D_list, n_section = get_init_data()
@@ -88,7 +99,7 @@ if __name__ == "__main__":
     # Параметры сопла
     gemtr_list = [] # [l_kam, D_kam, X_kr, D_kr, x_cooling_change] # длина камеры должна быть больше 50 мм
 
-    x_cooling_change = 1500 # точка смены проточного охлаждения на радиационное
+    x_cooling_change = 700 # точка смены проточного охлаждения на радиационное
 
     gemtr_list.append(X_list.pop())
     gemtr_list.append(D_list.pop())
@@ -104,15 +115,15 @@ if __name__ == "__main__":
     outer_wall = 3
     delt_r = 1
     betta = 0
-    height = 6
-    lambda_wall = 28
+    height = 3
+
 
     cooling_path_param.append(inner_wall)
     cooling_path_param.append(outer_wall)
     cooling_path_param.append(delt_r)
     cooling_path_param.append(betta)
     cooling_path_param.append(height)
-    cooling_path_param.append(lambda_wall)
+
 
     # Теплофизические параметры продуктов сгорания
 
@@ -122,5 +133,7 @@ if __name__ == "__main__":
 
     cooler_data = get_cooler_data()
 
+    correction_hydr_resist = get_hydraulic_data()
+
     htprt.heat_protection_main(X_list, D_list, n_section, gemtr_list, cooling_path_param, thermophysical_parameters,
-                               cooler_data, lamda_wall_table)
+                               cooler_data, lamda_wall_table, correction_hydr_resist)
